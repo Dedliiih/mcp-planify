@@ -2,8 +2,11 @@ use crate::{database::connection::DbPool, error::PlanifyError};
 use uuid::Uuid;
 use rusqlite::params;
 use rusqlite::types::ToSql;
+use serde::Serialize;
+use schemars::JsonSchema;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, JsonSchema)]
+#[allow(dead_code)]
 pub struct Item {
     pub id: String,
     pub content: String,
@@ -16,18 +19,24 @@ pub struct Item {
     pub added_at: String,
 }
 
+#[allow(dead_code)]
 pub fn create_item(pool: &DbPool, content: &str, project_id: &str, description: &Option<String>, 
     priority: Option<i64>, due: Option<&str>, labels: Option<&str>)  -> Result<Item, PlanifyError> {
     let id = Uuid::new_v4().to_string();
-    let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%:z").to_string();
+    let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%z").to_string();
     let priority = priority.unwrap_or(1);
+    let due = due.unwrap_or(r#"{"date":"","timezone":"","is_recurring":false,"recurrency_type":"6","recurrency_interval":"0","recurrency_weeks":"","recurrency_count":"0","recurrency_end":""}"#);
+    let labels = labels.unwrap_or("");
 
     pool.exec(|conn| {
         conn.execute(
             "INSERT INTO Items (id, content, description, due, added_at, project_id,
-                                priority, labels, checked, child_order, is_deleted)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, 0, 0)",
-            params![id, content, description, due, now, project_id, priority, labels],
+                                priority, labels, checked, child_order, is_deleted,
+                                day_order, collapsed, pinned, item_type, updated_at,
+                                section_id)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, 1000, 0,
+                      0, 0, 0, 'task', ?9, '')",
+            params![id, content, description, due, now, project_id, priority, labels, now],
         )?;
 
         Ok(conn.query_row(
@@ -50,6 +59,7 @@ pub fn create_item(pool: &DbPool, content: &str, project_id: &str, description: 
     })
 }
 
+#[allow(dead_code)]
 pub fn delete_item(pool: &DbPool, item_id: &str) -> Result<(), PlanifyError> {
     pool.exec(|conn| {
         conn.execute(
@@ -60,8 +70,9 @@ pub fn delete_item(pool: &DbPool, item_id: &str) -> Result<(), PlanifyError> {
     })
 }
 
+#[allow(dead_code)]
 pub fn complete_item(pool: &DbPool, item_id: &str) -> Result<Item, PlanifyError> {
-    let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%:z").to_string();
+    let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%z").to_string();
 
     pool.exec(|conn| {
         conn.execute(
@@ -88,6 +99,7 @@ pub fn complete_item(pool: &DbPool, item_id: &str) -> Result<Item, PlanifyError>
     })
 }
 
+#[allow(dead_code)]
 pub fn list_items(
     pool: &DbPool,
     project_id: Option<&str>,

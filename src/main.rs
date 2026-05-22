@@ -1,18 +1,23 @@
-use crate::database::{connection::DbPool, projects};
+use crate::database::connection::DbPool;
+use crate::server::PlanifyServer;
+use tokio;
+use rmcp::ServiceExt;
+use rmcp::transport::io;
 
+mod server;
 mod database;
 mod error;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let db_path = database::connection::resolve_db_path().unwrap_or_else(|err| {
         eprintln!("Error: {:?}", err);
         std::process::exit(1);
     });
-    println!("Resolved database path: {}", db_path.display());
+    eprintln!("Resolved database path: {}", db_path.display());
 
     let pool = DbPool::new(&db_path).unwrap();
     
-    let projects = projects::list_projects(&pool);
-
-    println!("{:?}", projects);
+    let server = PlanifyServer { pool };
+    server.serve(io::stdio()).await.unwrap().waiting().await.unwrap();
 }

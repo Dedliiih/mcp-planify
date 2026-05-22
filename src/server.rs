@@ -1,0 +1,104 @@
+use rmcp::{tool_router, tool_handler, tool, ServerHandler, ErrorData};
+use rmcp::handler::server::wrapper::{Json, Parameters};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use crate::database::connection::DbPool;
+use crate::database::{projects, items};
+
+#[derive(Serialize, JsonSchema)]
+struct ProjectList {
+    projects: Vec<projects::Project>,
+}
+
+#[derive(Serialize, JsonSchema)]
+struct ItemList {
+    items: Vec<items::Item>,
+}
+
+#[allow(dead_code)]
+pub struct PlanifyServer {
+   pub pool: DbPool,
+}
+
+#[derive(Deserialize, JsonSchema)]
+#[allow(dead_code)]
+struct ListItemsParameters {
+    project_id: Option<String>,
+    completed: Option<bool>,
+    priority: Option<i64>
+}
+
+#[derive(Deserialize, JsonSchema, Default)]
+#[allow(dead_code)]
+
+pub struct CreateItemParams {
+    pub content: String,
+    pub project_id: String,
+    pub description: Option<String>,
+    pub priority: Option<i64>,
+    pub due: Option<String>,
+    pub labels: Option<String>,
+}
+#[derive(Deserialize, JsonSchema, Default)]
+#[allow(dead_code)]
+pub struct CompleteItemParams {
+    pub item_id: String,
+}
+#[derive(Deserialize, JsonSchema, Default)]
+#[allow(dead_code)]
+pub struct DeleteItemParams {
+    pub item_id: String,
+}
+
+
+#[tool_router]
+impl PlanifyServer {
+    #[tool(name = "list_projects", description = "List all available projects")]
+    fn list_projects(&self) -> Json<ProjectList> {
+        Json(ProjectList {
+            projects: projects::list_projects(&self.pool).expect("list_projects failed"),
+        })
+    }
+
+    #[tool(name = "list_items", description = "List items, optionally filtered by project, completion status or priority")]
+    fn list_items(&self, params: Parameters<ListItemsParameters>) -> Json<ItemList> {
+        let request = params.0;
+
+        Json(ItemList {
+            items: items::list_items(
+                &self.pool,
+                request.project_id.as_deref(),
+                request.completed,
+                request.priority,
+            ).expect("list_items failed"),
+        })
+    }
+    
+    #[tool(name = "create_item", description = "Create a new task")]
+    fn create_item(&self,
+        Parameters(CreateItemParams { content, project_id, description, priority, due, labels }): Parameters<CreateItemParams>,
+    ) -> Result<Json<items::Item>, ErrorData> {
+        items::create_item(
+            &self.pool, &content, &project_id, &description,
+            priority, due.as_deref(), labels.as_deref(),
+        )
+        .map(Json)
+        .map_err(|e| ErrorData::internal_error(e.to_string(), None))
+    }
+
+    #[tool(name = "complete_item", description = "Mark a task as completed")]
+    fn complete_item(&self, Parameters(CompleteItemParams { item_id }): Parameters<CompleteItemParams>, ) -> Result<Json<items::Item>, ErrorData> {
+        items::complete_item(&self.pool, &item_id)
+            .map(Json)
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None))
+    }
+
+    #[tool(name = "delete_item", description = "Soft-delete a task by ID")]
+    fn delete_item(&self, Parameters(DeleteItemParams { item_id }): Parameters<DeleteItemParams>,) -> Result<(), ErrorData> {
+        items::delete_item(&self.pool, &item_id)
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None))
+    }
+}
+
+#[tool_handler]
+impl ServerHandler for PlanifyServer {}

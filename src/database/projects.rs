@@ -1,8 +1,13 @@
 use crate::database::connection::DbPool;
 use crate::error::PlanifyError;
+
+#[allow(unused_imports)]
 use std::path::Path;
 
-#[derive(Debug)]
+use serde::Serialize;
+use schemars::JsonSchema;
+
+#[derive(Debug, Serialize, JsonSchema)]
 pub struct Project {
     pub id: String,
     pub name: String,
