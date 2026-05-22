@@ -29,13 +29,6 @@ pub struct DbPool {
     pool: Arc<Mutex<Connection>>,
 }
 
-#[derive(Debug)]
-#[expect(dead_code)]  
-pub struct Project {
-    pub id: String,
-    pub name: String,
-}
-
 impl DbPool {
     pub fn new(path: &Path) -> Result<Self, PlanifyError> {
         let conn = Connection::open(path)?;
@@ -54,22 +47,8 @@ impl DbPool {
         })?;
         f(&guard)
     }
-
-    pub fn list_projects(&self) -> Result<Vec<Project>, PlanifyError> {
-        self.exec(|conn| {
-            let mut stmt = conn.prepare("SELECT id, name FROM Projects")?;
-            
-            let projects = stmt.query_map((), |row| {
-                Ok(Project {
-                    id: row.get(0)?,
-                    name: row.get(1)?
-                })
-            })?.collect::<Result<Vec<_>, _>>()?;
-
-            Ok(projects)
-        })
-    }
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -130,33 +109,5 @@ mod tests {
         assert!(pool.is_ok());
     }
 
-    #[test]
-    fn create_empty_projects_table() {
-        let pool = DbPool::new(Path::new(":memory:")).unwrap();
-
-        pool.exec(|conn| {
-            conn.execute_batch(
-                "CREATE TABLE Projects (id TEXT PRIMARY KEY, name TEXT NOT NULL);"
-            ).unwrap();
-            Ok(())
-        }).unwrap();
-        let projects = pool.list_projects().unwrap();
-        assert!(projects.is_empty());
-    }
-
-    #[test]
-    fn list_projects_devuelve_datos() {
-        let pool = DbPool::new(Path::new(":memory:")).unwrap();
-        pool.exec(|conn| {
-            conn.execute_batch(
-                "CREATE TABLE Projects (id TEXT PRIMARY KEY, name TEXT NOT NULL);
-                 INSERT INTO Projects VALUES ('1', 'Inbox');
-                 INSERT INTO Projects VALUES ('2', 'Personal');"
-            ).unwrap();
-            Ok(())
-        }).unwrap();
-        let projects = pool.list_projects().unwrap();
-        assert_eq!(projects.len(), 2);
-        assert_eq!(projects[0].name, "Inbox");
-    }
+  
 }

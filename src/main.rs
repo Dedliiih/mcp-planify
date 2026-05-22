@@ -1,4 +1,4 @@
-use crate::database::connection::DbPool;
+use crate::database::{connection::DbPool, projects};
 
 mod database;
 mod error;
@@ -12,7 +12,7 @@ fn main() {
 
     let pool = DbPool::new(&db_path).unwrap();
     
-    let projects = pool.list_projects();
+    let projects = projects::list_projects(&pool);
 
     println!("{:?}", projects);
 }
