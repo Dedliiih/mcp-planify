@@ -29,8 +29,7 @@ struct ListItemsParameters {
 }
 
 #[derive(Deserialize, JsonSchema, Default)]
-#[allow(dead_code)]
-
+#[allow(dead_code, clippy::too_many_arguments)]
 pub struct CreateItemParams {
     pub content: String,
     pub project_id: String,

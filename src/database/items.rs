@@ -20,7 +20,7 @@ pub struct Item {
     pub parent_id: Option<String>
 }
 
-#[allow(dead_code)]
+#[allow(dead_code, clippy::too_many_arguments)]
 pub fn create_item(pool: &DbPool, content: &str, project_id: &str, description: &Option<String>, 
     priority: Option<i64>, due: Option<&str>, labels: Option<&str>,
     parent_id: Option<&str>)  -> Result<Item, PlanifyError> {

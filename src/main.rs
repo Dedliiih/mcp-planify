@@ -2,7 +2,6 @@ use std::process;
 
 use crate::database::connection::DbPool;
 use crate::server::PlanifyServer;
-use tokio;
 use rmcp::ServiceExt;
 use rmcp::transport::io;
 
@@ -18,7 +17,7 @@ async fn main() {
     });
     eprintln!("Resolved database path: {}", db_path.display());
 
-    let pool = DbPool::new(&db_path).expect(&format!("Failed to open database at: {:?}", db_path));
+    let pool = DbPool::new(&db_path).unwrap_or_else(|_| panic!("Failed to open database at: {:?}", db_path));
 
     let server = PlanifyServer { pool };
     
