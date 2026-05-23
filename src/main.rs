@@ -5,9 +5,9 @@ use crate::server::PlanifyServer;
 use rmcp::ServiceExt;
 use rmcp::transport::io;
 
-mod server;
 mod database;
 mod error;
+mod server;
 
 #[tokio::main]
 async fn main() {
@@ -17,10 +17,11 @@ async fn main() {
     });
     eprintln!("Resolved database path: {}", db_path.display());
 
-    let pool = DbPool::new(&db_path).unwrap_or_else(|_| panic!("Failed to open database at: {:?}", db_path));
+    let pool = DbPool::new(&db_path)
+        .unwrap_or_else(|_| panic!("Failed to open database at: {:?}", db_path));
 
     let server = PlanifyServer { pool };
-    
+
     match server.serve(io::stdio()).await {
         Ok(s) => {
             if let Err(e) = s.waiting().await {

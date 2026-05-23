@@ -1,7 +1,7 @@
 use crate::database::connection::DbPool;
 use crate::error::PlanifyError;
-use serde::Serialize;
 use schemars::JsonSchema;
+use serde::Serialize;
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Project {
@@ -12,13 +12,15 @@ pub struct Project {
 pub fn list_projects(pool: &DbPool) -> Result<Vec<Project>, PlanifyError> {
     pool.exec(|conn| {
         let mut stmt = conn.prepare("SELECT id, name FROM Projects")?;
-        
-        let projects = stmt.query_map((), |row| {
-            Ok(Project {
-                id: row.get(0)?,
-                name: row.get(1)?
-            })
-        })?.collect::<Result<Vec<_>, _>>()?;
+
+        let projects = stmt
+            .query_map((), |row| {
+                Ok(Project {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(projects)
     })
@@ -26,20 +28,20 @@ pub fn list_projects(pool: &DbPool) -> Result<Vec<Project>, PlanifyError> {
 
 #[cfg(test)]
 mod tests {
-    #[allow(unused_imports)]
-    use std::path::Path;  
     use super::*;
+    #[allow(unused_imports)]
+    use std::path::Path;
 
     #[test]
     fn create_empty_projects_table() {
         let pool = DbPool::new(Path::new(":memory:")).unwrap();
 
         pool.exec(|conn| {
-            conn.execute_batch(
-                "CREATE TABLE Projects (id TEXT PRIMARY KEY, name TEXT NOT NULL);"
-            ).unwrap();
+            conn.execute_batch("CREATE TABLE Projects (id TEXT PRIMARY KEY, name TEXT NOT NULL);")
+                .unwrap();
             Ok(())
-        }).unwrap();
+        })
+        .unwrap();
         let projects = list_projects(&pool).unwrap();
         assert!(projects.is_empty());
     }
@@ -51,10 +53,12 @@ mod tests {
             conn.execute_batch(
                 "CREATE TABLE Projects (id TEXT PRIMARY KEY, name TEXT NOT NULL);
                     INSERT INTO Projects VALUES ('1', 'Inbox');
-                    INSERT INTO Projects VALUES ('2', 'Personal');"
-            ).unwrap();
+                    INSERT INTO Projects VALUES ('2', 'Personal');",
+            )
+            .unwrap();
             Ok(())
-        }).unwrap();
+        })
+        .unwrap();
         let projects = list_projects(&pool).unwrap();
         assert_eq!(projects.len(), 2);
         assert_eq!(projects[0].name, "Inbox");

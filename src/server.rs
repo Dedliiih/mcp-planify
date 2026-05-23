@@ -1,9 +1,9 @@
-use rmcp::{tool_router, tool_handler, tool, ServerHandler, ErrorData};
+use crate::database::connection::DbPool;
+use crate::database::{items, projects};
 use rmcp::handler::server::wrapper::{Json, Parameters};
+use rmcp::{ErrorData, ServerHandler, tool, tool_handler, tool_router};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::database::connection::DbPool;
-use crate::database::{projects, items};
 
 #[derive(Serialize, JsonSchema)]
 struct ProjectList {
@@ -17,7 +17,7 @@ struct ItemList {
 
 #[allow(dead_code)]
 pub struct PlanifyServer {
-   pub pool: DbPool,
+    pub pool: DbPool,
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -25,7 +25,7 @@ pub struct PlanifyServer {
 struct ListItemsParameters {
     project_id: Option<String>,
     completed: Option<bool>,
-    priority: Option<i64>
+    priority: Option<i64>,
 }
 
 #[derive(Deserialize, JsonSchema, Default)]
@@ -50,7 +50,6 @@ pub struct DeleteItemParams {
     pub item_id: String,
 }
 
-
 #[tool_router]
 impl PlanifyServer {
     #[tool(name = "list_projects", description = "List all available projects")]
@@ -60,26 +59,46 @@ impl PlanifyServer {
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
 
-    #[tool(name = "list_items", description = "List items, optionally filtered by project, completion status or priority")]
-    fn list_items(&self, params: Parameters<ListItemsParameters>) -> Result<Json<ItemList>, ErrorData> {
+    #[tool(
+        name = "list_items",
+        description = "List items, optionally filtered by project, completion status or priority"
+    )]
+    fn list_items(
+        &self,
+        params: Parameters<ListItemsParameters>,
+    ) -> Result<Json<ItemList>, ErrorData> {
         let request = params.0;
         items::list_items(
-                &self.pool,
-                request.project_id.as_deref(),
-                request.completed,
-                request.priority,
+            &self.pool,
+            request.project_id.as_deref(),
+            request.completed,
+            request.priority,
         )
         .map(|items| Json(ItemList { items }))
         .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
-    
+
     #[tool(name = "create_item", description = "Create a new task")]
-    fn create_item(&self,
-        Parameters(CreateItemParams { content, project_id, description, priority, due, labels, parent_id }): Parameters<CreateItemParams>,
+    fn create_item(
+        &self,
+        Parameters(CreateItemParams {
+            content,
+            project_id,
+            description,
+            priority,
+            due,
+            labels,
+            parent_id,
+        }): Parameters<CreateItemParams>,
     ) -> Result<Json<items::Item>, ErrorData> {
         items::create_item(
-            &self.pool, &content, &project_id, &description,
-            priority, due.as_deref(), labels.as_deref(),
+            &self.pool,
+            &content,
+            &project_id,
+            &description,
+            priority,
+            due.as_deref(),
+            labels.as_deref(),
             parent_id.as_deref(),
         )
         .map(Json)
@@ -87,14 +106,20 @@ impl PlanifyServer {
     }
 
     #[tool(name = "complete_item", description = "Mark a task as completed")]
-    fn complete_item(&self, Parameters(CompleteItemParams { item_id }): Parameters<CompleteItemParams>, ) -> Result<Json<items::Item>, ErrorData> {
+    fn complete_item(
+        &self,
+        Parameters(CompleteItemParams { item_id }): Parameters<CompleteItemParams>,
+    ) -> Result<Json<items::Item>, ErrorData> {
         items::complete_item(&self.pool, &item_id)
             .map(Json)
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
 
     #[tool(name = "delete_item", description = "Soft-delete a task by ID")]
-    fn delete_item(&self, Parameters(DeleteItemParams { item_id }): Parameters<DeleteItemParams>,) -> Result<(), ErrorData> {
+    fn delete_item(
+        &self,
+        Parameters(DeleteItemParams { item_id }): Parameters<DeleteItemParams>,
+    ) -> Result<(), ErrorData> {
         items::delete_item(&self.pool, &item_id)
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
