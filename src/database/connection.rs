@@ -3,22 +3,22 @@ use dirs::home_dir;
 use crate::error::PlanifyError;
 
 pub fn resolve_db_path() -> Result<PathBuf, PlanifyError> {
-    let mut tried_paths: Vec<PathBuf> = vec![];
-
     if let Ok(path) = std::env::var("PLANIFY_DB_PATH") {
         let p = PathBuf::from(&path);
         if p.exists() { return Ok(p); }
-        tried_paths.push(p);
+        return Err(PlanifyError::DbNotFound { 
+            searched: vec![p], 
+            hint: format!("PLANIFY_DB_PATH is set to {:?} but the file does not exist", path)
+        })
     }
 
     if let Some(home) = home_dir() {
         let flatpak = home.join(".var/app/io.github.alainm23.planify/data/io.github.alainm23.planify/database.db");
         if flatpak.exists() { return Ok(flatpak); }
-        tried_paths.push(flatpak);
     }
 
     Err(PlanifyError::DbNotFound {
-        searched: tried_paths, hint: "Please set the PLANIFY_DB_PATH environment variable to a valid path or verify your Planify installation.".to_string() 
+        searched: vec![], hint: "Please set the PLANIFY_DB_PATH environment variable to a valid path or verify your Planify installation.".to_string() 
     })
 }
 

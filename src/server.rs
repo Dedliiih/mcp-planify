@@ -38,6 +38,7 @@ pub struct CreateItemParams {
     pub priority: Option<i64>,
     pub due: Option<String>,
     pub labels: Option<String>,
+    pub parent_id: Option<String>,
 }
 #[derive(Deserialize, JsonSchema, Default)]
 #[allow(dead_code)]
@@ -54,33 +55,33 @@ pub struct DeleteItemParams {
 #[tool_router]
 impl PlanifyServer {
     #[tool(name = "list_projects", description = "List all available projects")]
-    fn list_projects(&self) -> Json<ProjectList> {
-        Json(ProjectList {
-            projects: projects::list_projects(&self.pool).expect("list_projects failed"),
-        })
+    fn list_projects(&self) -> Result<Json<ProjectList>, ErrorData> {
+        projects::list_projects(&self.pool)
+            .map(|projects| Json(ProjectList { projects }))
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
 
     #[tool(name = "list_items", description = "List items, optionally filtered by project, completion status or priority")]
-    fn list_items(&self, params: Parameters<ListItemsParameters>) -> Json<ItemList> {
+    fn list_items(&self, params: Parameters<ListItemsParameters>) -> Result<Json<ItemList>, ErrorData> {
         let request = params.0;
-
-        Json(ItemList {
-            items: items::list_items(
+        items::list_items(
                 &self.pool,
                 request.project_id.as_deref(),
                 request.completed,
                 request.priority,
-            ).expect("list_items failed"),
-        })
+        )
+        .map(|items| Json(ItemList { items }))
+        .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
     
     #[tool(name = "create_item", description = "Create a new task")]
     fn create_item(&self,
-        Parameters(CreateItemParams { content, project_id, description, priority, due, labels }): Parameters<CreateItemParams>,
+        Parameters(CreateItemParams { content, project_id, description, priority, due, labels, parent_id }): Parameters<CreateItemParams>,
     ) -> Result<Json<items::Item>, ErrorData> {
         items::create_item(
             &self.pool, &content, &project_id, &description,
             priority, due.as_deref(), labels.as_deref(),
+            parent_id.as_deref(),
         )
         .map(Json)
         .map_err(|e| ErrorData::internal_error(e.to_string(), None))

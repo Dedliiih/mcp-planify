@@ -1,3 +1,5 @@
+use std::process;
+
 use crate::database::connection::DbPool;
 use crate::server::PlanifyServer;
 use tokio;
@@ -16,8 +18,20 @@ async fn main() {
     });
     eprintln!("Resolved database path: {}", db_path.display());
 
-    let pool = DbPool::new(&db_path).unwrap();
-    
+    let pool = DbPool::new(&db_path).expect(&format!("Failed to open database at: {:?}", db_path));
+
     let server = PlanifyServer { pool };
-    server.serve(io::stdio()).await.unwrap().waiting().await.unwrap();
+    
+    match server.serve(io::stdio()).await {
+        Ok(s) => {
+            if let Err(e) = s.waiting().await {
+                eprintln!("MCP server exited with error : {e}");
+            }
+        }
+
+        Err(e) => {
+            eprintln!("Failed to start MCP server: {e}");
+            process::exit(1);
+        }
+    }
 }

@@ -1,9 +1,5 @@
 use crate::database::connection::DbPool;
 use crate::error::PlanifyError;
-
-#[allow(unused_imports)]
-use std::path::Path;
-
 use serde::Serialize;
 use schemars::JsonSchema;
 
@@ -30,6 +26,8 @@ pub fn list_projects(pool: &DbPool) -> Result<Vec<Project>, PlanifyError> {
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
+    use std::path::Path;  
     use super::*;
 
     #[test]
@@ -47,7 +45,7 @@ mod tests {
     }
 
     #[test]
-    fn list_projects_devuelve_datos() {
+    fn list_projects_returns_data() {
         let pool = DbPool::new(Path::new(":memory:")).unwrap();
         pool.exec(|conn| {
             conn.execute_batch(

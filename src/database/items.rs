@@ -17,11 +17,13 @@ pub struct Item {
     pub project_id: String,
     pub checked: bool,
     pub added_at: String,
+    pub parent_id: Option<String>
 }
 
 #[allow(dead_code)]
 pub fn create_item(pool: &DbPool, content: &str, project_id: &str, description: &Option<String>, 
-    priority: Option<i64>, due: Option<&str>, labels: Option<&str>)  -> Result<Item, PlanifyError> {
+    priority: Option<i64>, due: Option<&str>, labels: Option<&str>,
+    parent_id: Option<&str>)  -> Result<Item, PlanifyError> {
     let id = Uuid::new_v4().to_string();
     let now = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%z").to_string();
     let priority = priority.unwrap_or(1);
@@ -33,15 +35,15 @@ pub fn create_item(pool: &DbPool, content: &str, project_id: &str, description: 
             "INSERT INTO Items (id, content, description, due, added_at, project_id,
                                 priority, labels, checked, child_order, is_deleted,
                                 day_order, collapsed, pinned, item_type, updated_at,
-                                section_id)
+                                section_id, parent_id)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, 1000, 0,
-                      0, 0, 0, 'task', ?9, '')",
-            params![id, content, description, due, now, project_id, priority, labels, now],
+                      0, 0, 0, 'task', ?9, '', ?10)",
+            params![id, content, description, due, now, project_id, priority, labels, now, parent_id],
         )?;
 
         Ok(conn.query_row(
             "SELECT id, content, description, priority, due, labels,
-                    project_id, checked, added_at
+                    project_id, checked, added_at, parent_id
              FROM Items WHERE id = ?1",
             [&id],
             |row| Ok(Item {
@@ -54,6 +56,7 @@ pub fn create_item(pool: &DbPool, content: &str, project_id: &str, description: 
                 project_id: row.get(6)?,
                 checked: row.get(7)?,
                 added_at: row.get(8)?,
+                parent_id: row.get(9)?,
             }),
         )?)
     })
@@ -81,7 +84,7 @@ pub fn complete_item(pool: &DbPool, item_id: &str) -> Result<Item, PlanifyError>
         )?;
         Ok(conn.query_row(
             "SELECT id, content, description, priority, due, labels,
-                    project_id, checked, added_at
+                    project_id, checked, added_at, parent_id
             FROM Items WHERE id = ?1",
             [item_id],
             |row| Ok(Item {
@@ -94,6 +97,7 @@ pub fn complete_item(pool: &DbPool, item_id: &str) -> Result<Item, PlanifyError>
                 project_id: row.get(6)?,
                 checked: row.get(7)?,
                 added_at: row.get(8)?,
+                parent_id: row.get(9)?,
             }),
         )?)
     })
@@ -109,7 +113,7 @@ pub fn list_items(
     pool.exec(|conn| {
         let mut sql = String::from(
             "SELECT id, content, description, priority, due, labels,
-                    project_id, checked, added_at
+                    project_id, checked, added_at, parent_id
              FROM Items WHERE is_deleted = 0"
         );
         let mut params: Vec<Box<dyn ToSql>> = vec![];
@@ -140,6 +144,7 @@ pub fn list_items(
                 project_id: row.get(6)?,
                 checked: row.get(7)?,
                 added_at: row.get(8)?,
+                parent_id: row.get(9)?
             })
         })?.collect::<Result<Vec<_>, _>>()?;
         Ok(items)
@@ -163,7 +168,8 @@ mod tests {
                     priority INTEGER DEFAULT 1, child_order INTEGER DEFAULT 0,
                     checked INTEGER DEFAULT 0, is_deleted INTEGER DEFAULT 0,
                     day_order INTEGER DEFAULT 0, collapsed INTEGER DEFAULT 0,
-                    pinned INTEGER DEFAULT 0, labels TEXT
+                    pinned INTEGER DEFAULT 0, labels TEXT,
+                    item_type TEXT DEFAULT 'task'
                 );"
             ).unwrap();
             Ok(())
@@ -172,11 +178,18 @@ mod tests {
    
     #[test]
     fn create_item_with_only_required_fields_test() {
-        let pool = DbPool::new(Path::new(":memory")).unwrap();
+        let pool = DbPool::new(Path::new(":memory:")).unwrap();
         setup_items_table(&pool);
 
         let item = create_item(
-            &pool, "content", "proj-1", &None, None, None, None,
+            &pool, 
+            "content", 
+            "proj-1", 
+            &None, 
+            None, 
+            None, 
+            None,
+            None,
         ).unwrap();
 
         assert_eq!(item.content, "content");
@@ -194,7 +207,9 @@ mod tests {
             Some(4),
             Some(r#"{"date":"2026-06-15"}"#),
             Some("label-1,label-2"),
+            Some("parent-123"),
         ).unwrap();
+        assert_eq!(item.parent_id.unwrap(), "parent-123");
 
         assert_eq!(item.content, "Tarea importante");
         assert_eq!(item.description.unwrap(), "Descripción detallada");
@@ -203,13 +218,42 @@ mod tests {
         assert_eq!(item.labels.unwrap(), "label-1,label-2");
     }
 
+    #[test]
+    fn create_subtask_with_parent_id_test() {
+        let pool = DbPool::new(Path::new(":memory:")).unwrap();
+        setup_items_table(&pool);
+
+        // Create parent
+        let parent = create_item(
+            &pool, "Tarea padre", "proj-1",
+            &None, None, None, None, None,
+        ).unwrap();
+
+        // Create child with parent_id
+        let child = create_item(
+            &pool, "Subtarea", "proj-1",
+            &None, None, None, None,
+            Some(&parent.id),
+        ).unwrap();
+
+        assert_eq!(child.parent_id.as_deref(), Some(parent.id.as_str()));
+        assert_eq!(child.content, "Subtarea");
+        assert_eq!(child.project_id, "proj-1");
+
+        // Verify the child is listed and linked
+        let items = list_items(&pool, Some("proj-1"), None, None).unwrap();
+        let children: Vec<&Item> = items.iter().filter(|i| i.parent_id.as_deref() == Some(parent.id.as_str())).collect();
+        assert_eq!(children.len(), 1);
+        assert_eq!(children[0].content, "Subtarea");
+    }
+
      #[test]
     fn verify_new_item_persistence() {
         let pool = DbPool::new(Path::new(":memory:")).unwrap();
         setup_items_table(&pool);
         let create_item = create_item(
             &pool, "Persistente", "proj-1",
-            &None, None, None, None,
+            &None, None, None, None, None,
         ).unwrap();
 
         let read_created_item = pool.exec(|conn| {
@@ -229,7 +273,7 @@ mod tests {
         setup_items_table(&pool);
 
         let item = create_item(&pool, "Para completar", "proj-1",
-            &None, None, None, None).unwrap();
+            &None, None, None, None, None).unwrap();
 
         assert!(!item.checked);
         let completado = complete_item(&pool, &item.id).unwrap();
@@ -242,7 +286,7 @@ mod tests {
         setup_items_table(&pool);
 
         let item = create_item(&pool, "Con timestamp", "proj-1",
-            &None, None, None, None).unwrap();
+            &None, None, None, None, None).unwrap();
 
         let completado = complete_item(&pool, &item.id).unwrap();
 
@@ -263,8 +307,8 @@ mod tests {
         let pool = DbPool::new(Path::new(":memory:")).unwrap();
         setup_items_table(&pool);
 
-        create_item(&pool, "Tarea A", "proj-1", &None, None, None, None).unwrap();
-        create_item(&pool, "Tarea B", "proj-1", &None, None, None, None).unwrap();
+        create_item(&pool, "Tarea A", "proj-1", &None, None, None, None, None).unwrap();
+        create_item(&pool, "Tarea B", "proj-1", &None, None, None, None, None).unwrap();
         let items = list_items(&pool, None, None, None).unwrap();
 
         assert_eq!(items.len(), 2);
@@ -275,8 +319,8 @@ mod tests {
         let pool = DbPool::new(Path::new(":memory:")).unwrap();
         setup_items_table(&pool);
 
-        create_item(&pool, "Proyecto 1", "proj-A", &None, None, None, None).unwrap();
-        create_item(&pool, "Proyecto 2", "proj-B", &None, None, None, None).unwrap();
+        create_item(&pool, "Proyecto 1", "proj-A", &None, None, None, None, None).unwrap();
+        create_item(&pool, "Proyecto 2", "proj-B", &None, None, None, None, None).unwrap();
         let items = list_items(&pool, Some("proj-A"), None, None).unwrap();
 
         assert_eq!(items.len(), 1);
@@ -287,9 +331,9 @@ mod tests {
     fn list_items_filter_by_completes() {
         let pool = DbPool::new(Path::new(":memory:")).unwrap();
         setup_items_table(&pool);
-        create_item(&pool, "Pendiente", "proj-1", &None, None, None, None).unwrap();
+        create_item(&pool, "Pendiente", "proj-1", &None, None, None, None, None).unwrap();
 
-        let item = create_item(&pool, "Completada", "proj-1", &None, None, None, None).unwrap();
+        let item = create_item(&pool, "Completada", "proj-1", &None, None, None, None, None).unwrap();
         complete_item(&pool, &item.id).unwrap();
 
         let pendientes = list_items(&pool, None, Some(false), None).unwrap();
@@ -303,7 +347,7 @@ mod tests {
         let pool = DbPool::new(Path::new(":memory:")).unwrap();
         setup_items_table(&pool);
         let item = create_item(&pool, "Para borrar", "proj-1",
-            &None, None, None, None).unwrap();
+            &None, None, None, None, None).unwrap();
         delete_item(&pool, &item.id).unwrap();
 
         let items = list_items(&pool, None, None, None).unwrap();
