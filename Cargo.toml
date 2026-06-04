@@ -3,7 +3,7 @@ name = "mcp-planify"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-rust-versoin = "1.95"
+rust-version = "1.95"
 
 [dependencies]
 chrono = "0.4.44"

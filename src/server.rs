@@ -50,6 +50,17 @@ pub struct DeleteItemParams {
     pub item_id: String,
 }
 
+#[derive(Deserialize, JsonSchema, Default)]
+#[allow(dead_code)]
+pub struct UpdateItemParams {
+    item_id: String,
+    content: Option<String>,
+    description: Option<String>,
+    priority: Option<i64>,
+    due: Option<String>,
+    labels: Option<String>
+}
+
 #[tool_router]
 impl PlanifyServer {
     #[tool(name = "list_projects", description = "List all available projects")]
@@ -122,6 +133,23 @@ impl PlanifyServer {
     ) -> Result<(), ErrorData> {
         items::delete_item(&self.pool, &item_id)
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))
+    }
+
+    #[tool(name = "update_item", description = "Update a created item by ID")]
+    fn update_item(
+        &self,
+        Parameters(UpdateItemParams {
+            item_id,
+            content,
+            description,
+            priority,
+            due,
+            labels
+        }) : Parameters<UpdateItemParams>,
+    ) -> Result<Json<items::Item>, ErrorData> {
+        items::update_item(&self.pool, &item_id, content.as_deref(), &description, priority, due.as_deref(), labels.as_deref())
+        .map(Json)
+        .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
 }
 

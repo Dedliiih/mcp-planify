@@ -85,6 +85,55 @@ pub fn create_item(
 }
 
 #[allow(dead_code)]
+pub fn update_item(
+    pool: &DbPool,
+    item_id: &str,
+    content: Option<&str>,
+    description: &Option<String>,
+    priority: Option<i64>,
+    due: Option<&str>,
+    labels: Option<&str>
+) -> Result<Item, PlanifyError> {
+    let updated_at = chrono::Local::now()
+        .format("%Y-%m-%dT%H:%M:%S%z")
+        .to_string();
+
+    pool.exec(|conn| {
+
+        conn.execute(
+            "UPDATE Items
+                 SET content = COALESCE(?1, content), description = COALESCE(?2, description), 
+                 priority = COALESCE(?3, priority), due = COALESCE(?4, due), labels = COALESCE(?5, labels), updated_at =?6
+                 WHERE id = ?7
+                 ",
+        params![content, description, priority, due, labels, updated_at, item_id],
+        )?;
+
+        Ok(conn.query_row(
+            "SELECT id, content, description, priority, due, labels,
+                    project_id, checked, added_at, parent_id
+             FROM Items WHERE id = ?1",
+            [&item_id],
+            |row| {
+                Ok(Item {
+                    id: row.get(0)?,
+                    content: row.get(1)?,
+                    description: row.get(2)?,
+                    priority: row.get(3)?,
+                    due: row.get(4)?,
+                    labels: row.get(5)?,
+                    project_id: row.get(6)?,
+                    checked: row.get(7)?,
+                    added_at: row.get(8)?,
+                    parent_id: row.get(9)?,
+                })
+            },
+        )?)
+    })
+
+}
+
+#[allow(dead_code)]
 pub fn delete_item(pool: &DbPool, item_id: &str) -> Result<(), PlanifyError> {
     pool.exec(|conn| {
         conn.execute(
