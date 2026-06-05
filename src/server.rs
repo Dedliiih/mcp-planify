@@ -1,4 +1,5 @@
 use crate::database::connection::DbPool;
+use crate::database::projects::Project;
 use crate::database::{items, projects};
 use rmcp::handler::server::wrapper::{Json, Parameters};
 use rmcp::{ErrorData, ServerHandler, tool, tool_handler, tool_router};
@@ -61,6 +62,13 @@ pub struct UpdateItemParams {
     labels: Option<String>
 }
 
+#[derive(Deserialize, JsonSchema, Default)]
+#[allow(dead_code)]
+pub struct CreateProjectParams {
+    name: String,
+    description: Option<String>
+}
+
 #[tool_router]
 impl PlanifyServer {
     #[tool(name = "list_projects", description = "List all available projects")]
@@ -70,10 +78,18 @@ impl PlanifyServer {
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
 
-    #[tool(
-        name = "list_items",
-        description = "List items, optionally filtered by project, completion status or priority"
-    )]
+    #[tool(name = "create_project", description = "Create a new project")]
+    fn create_project(
+        &self,
+        params: Parameters<CreateProjectParams>
+    ) -> Result<Json<Project>, ErrorData> {
+        let request = params.0;
+        projects::create_project(&self.pool, &request.name, &request.description)
+        .map(Json)
+        .map_err(|e| ErrorData::internal_error(e.to_string(), None))
+    }
+
+    #[tool(name = "list_items", description = "List items, optionally filtered by project, completion status or priority")]
     fn list_items(
         &self,
         params: Parameters<ListItemsParameters>,
