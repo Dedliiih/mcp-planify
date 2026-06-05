@@ -108,25 +108,19 @@ impl PlanifyServer {
     #[tool(name = "create_item", description = "Create a new task")]
     fn create_item(
         &self,
-        Parameters(CreateItemParams {
-            content,
-            project_id,
-            description,
-            priority,
-            due,
-            labels,
-            parent_id,
-        }): Parameters<CreateItemParams>,
+        params: Parameters<CreateItemParams>,
     ) -> Result<Json<items::Item>, ErrorData> {
+        let request = params.0;
+
         items::create_item(
             &self.pool,
-            &content,
-            &project_id,
-            &description,
-            priority,
-            due.as_deref(),
-            labels.as_deref(),
-            parent_id.as_deref(),
+            &request.content,
+            &request.project_id,
+            &request.description,
+            request.priority,
+            request.due.as_deref(),
+            request.labels.as_deref(),
+            request.parent_id.as_deref(),
         )
         .map(Json)
         .map_err(|e| ErrorData::internal_error(e.to_string(), None))
@@ -135,9 +129,11 @@ impl PlanifyServer {
     #[tool(name = "complete_item", description = "Mark a task as completed")]
     fn complete_item(
         &self,
-        Parameters(CompleteItemParams { item_id }): Parameters<CompleteItemParams>,
+        params: Parameters<CompleteItemParams>
     ) -> Result<Json<items::Item>, ErrorData> {
-        items::complete_item(&self.pool, &item_id)
+        let request = params.0;
+
+        items::complete_item(&self.pool, &request.item_id)
             .map(Json)
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
@@ -145,25 +141,29 @@ impl PlanifyServer {
     #[tool(name = "delete_item", description = "Soft-delete a task by ID")]
     fn delete_item(
         &self,
-        Parameters(DeleteItemParams { item_id }): Parameters<DeleteItemParams>,
+        params: Parameters<DeleteItemParams>,
     ) -> Result<(), ErrorData> {
-        items::delete_item(&self.pool, &item_id)
+        let request = params.0;
+
+        items::delete_item(&self.pool, &request.item_id)
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
 
     #[tool(name = "update_item", description = "Update a created item by ID")]
     fn update_item(
         &self,
-        Parameters(UpdateItemParams {
-            item_id,
-            content,
-            description,
-            priority,
-            due,
-            labels
-        }) : Parameters<UpdateItemParams>,
+        params: Parameters<UpdateItemParams>,
     ) -> Result<Json<items::Item>, ErrorData> {
-        items::update_item(&self.pool, &item_id, content.as_deref(), &description, priority, due.as_deref(), labels.as_deref())
+        let request = params.0;
+
+        items::update_item(
+            &self.pool, 
+            &request.item_id, 
+            request.content.as_deref(), 
+            &request.description, 
+            request.priority, 
+            request.due.as_deref(), 
+            request.labels.as_deref())
         .map(Json)
         .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
