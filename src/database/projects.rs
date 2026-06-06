@@ -30,7 +30,6 @@ pub fn list_projects(pool: &DbPool) -> Result<Vec<Project>, PlanifyError> {
     })
 }
 
-#[warn(dead_code)]
 pub fn create_project(
     pool: &DbPool, 
     name: &str,
@@ -76,6 +75,33 @@ pub fn create_project(
     })
 }
 
+pub fn update_project(
+    pool: &DbPool,
+    project_id: &str,
+    name: Option<&str>,
+    description: Option<&str>,
+) -> Result<Project, PlanifyError> {
+    let stmt = String::from(
+        "UPDATE Projects
+         SET name = COALESCE(?1, name),
+             description = COALESCE(?2, description)
+         WHERE id = ?3"
+    );
+
+    pool.exec(|conn| {
+        conn.execute(&stmt, params![name, description, project_id])?;
+
+        Ok(conn.query_row(
+            "SELECT id, name, description FROM Projects WHERE id = ?1",
+            params![project_id],
+            |row| Ok(Project {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                description: row.get(2)?,
+            }),
+        )?)
+    })
+}
 
 #[cfg(test)]
 mod tests {

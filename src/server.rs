@@ -1,72 +1,15 @@
 use crate::database::connection::DbPool;
 use crate::database::projects::Project;
 use crate::database::{items, projects};
+use crate::parameters::item_params::{ListItemsParameters, CreateItemParams, CompleteItemParams, DeleteItemParams, UpdateItemParams};
+use crate::parameters::project_params::{CreateProjectParams, UpdateProjectParams};
+use crate::types::types::{ItemList, ProjectList};
 use rmcp::handler::server::wrapper::{Json, Parameters};
 use rmcp::{ErrorData, ServerHandler, tool, tool_handler, tool_router};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, JsonSchema)]
-struct ProjectList {
-    projects: Vec<projects::Project>,
-}
-
-#[derive(Serialize, JsonSchema)]
-struct ItemList {
-    items: Vec<items::Item>,
-}
 
 #[allow(dead_code)]
 pub struct PlanifyServer {
     pub pool: DbPool,
-}
-
-#[derive(Deserialize, JsonSchema)]
-#[allow(dead_code)]
-struct ListItemsParameters {
-    project_id: Option<String>,
-    completed: Option<bool>,
-    priority: Option<i64>,
-}
-
-#[derive(Deserialize, JsonSchema, Default)]
-#[allow(dead_code, clippy::too_many_arguments)]
-pub struct CreateItemParams {
-    pub content: String,
-    pub project_id: String,
-    pub description: Option<String>,
-    pub priority: Option<i64>,
-    pub due: Option<String>,
-    pub labels: Option<String>,
-    pub parent_id: Option<String>,
-}
-#[derive(Deserialize, JsonSchema, Default)]
-#[allow(dead_code)]
-pub struct CompleteItemParams {
-    pub item_id: String,
-}
-#[derive(Deserialize, JsonSchema, Default)]
-#[allow(dead_code)]
-pub struct DeleteItemParams {
-    pub item_id: String,
-}
-
-#[derive(Deserialize, JsonSchema, Default)]
-#[allow(dead_code)]
-pub struct UpdateItemParams {
-    item_id: String,
-    content: Option<String>,
-    description: Option<String>,
-    priority: Option<i64>,
-    due: Option<String>,
-    labels: Option<String>
-}
-
-#[derive(Deserialize, JsonSchema, Default)]
-#[allow(dead_code)]
-pub struct CreateProjectParams {
-    name: String,
-    description: Option<String>
 }
 
 #[tool_router]
@@ -85,6 +28,22 @@ impl PlanifyServer {
     ) -> Result<Json<Project>, ErrorData> {
         let request = params.0;
         projects::create_project(&self.pool, &request.name, &request.description)
+        .map(Json)
+        .map_err(|e| ErrorData::internal_error(e.to_string(), None))
+    }
+
+    #[tool(name = "update_project", description = "Update a project by ID")]
+    fn update_project(
+        &self,
+        params: Parameters<UpdateProjectParams>,
+    ) -> Result<Json<Project>, ErrorData> {
+        let request = params.0;
+        projects::update_project(
+            &self.pool,
+            &request.project_id,
+            request.name.as_deref(),
+            request.description.as_deref(),
+        )
         .map(Json)
         .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
