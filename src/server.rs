@@ -2,7 +2,7 @@ use crate::database::connection::DbPool;
 use crate::database::projects::Project;
 use crate::database::{items, projects};
 use crate::parameters::item_params::{ListItemsParameters, CreateItemParams, CompleteItemParams, DeleteItemParams, UpdateItemParams};
-use crate::parameters::project_params::{CreateProjectParams, UpdateProjectParams};
+use crate::parameters::project_params::{CreateProjectParams, UpdateProjectParams, DeleteProjectParams};
 use crate::types::types::{ItemList, ProjectList};
 use rmcp::handler::server::wrapper::{Json, Parameters};
 use rmcp::{ErrorData, ServerHandler, tool, tool_handler, tool_router};
@@ -46,6 +46,15 @@ impl PlanifyServer {
         )
         .map(Json)
         .map_err(|e| ErrorData::internal_error(e.to_string(), None))
+    }
+
+    #[tool(name = "delete_project", description = "Soft-delete a project and its items by ID")]
+    fn delete_project(
+        &self,
+        Parameters(DeleteProjectParams { project_id }): Parameters<DeleteProjectParams>,
+    ) -> Result<(), ErrorData> {
+        projects::delete_project(&self.pool, &project_id)
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
 
     #[tool(name = "list_items", description = "List items, optionally filtered by project, completion status or priority")]

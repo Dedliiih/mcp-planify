@@ -14,7 +14,7 @@ pub struct Project {
 
 pub fn list_projects(pool: &DbPool) -> Result<Vec<Project>, PlanifyError> {
     pool.exec(|conn| {
-        let mut stmt = conn.prepare("SELECT id, name, description, color FROM Projects")?;
+        let mut stmt = conn.prepare("SELECT id, name, description, color FROM Projects WHERE is_deleted = 0")?;
 
         let projects = stmt
             .query_map((), |row| {
@@ -85,7 +85,7 @@ pub fn update_project(
         "UPDATE Projects
          SET name = COALESCE(?1, name),
              description = COALESCE(?2, description)
-         WHERE id = ?3"
+         WHERE id = ?3" 
     );
 
     pool.exec(|conn| {
@@ -100,6 +100,20 @@ pub fn update_project(
                 description: row.get(2)?,
             }),
         )?)
+    })
+}
+
+pub fn delete_project(pool: &DbPool, project_id: &str) -> Result<(), PlanifyError> {
+    pool.exec(|conn| {
+        conn.execute(
+            "UPDATE Items SET is_deleted = 1 WHERE project_id = ?1",
+            params![project_id],
+        )?;
+        conn.execute(
+            "UPDATE Projects SET is_deleted = 1 WHERE id = ?1",
+            params![project_id],
+        )?;
+        Ok(())
     })
 }
 

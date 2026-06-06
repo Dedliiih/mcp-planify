@@ -15,3 +15,9 @@ pub struct UpdateProjectParams {
     pub name: Option<String>,
     pub description: Option<String>,
 }
+
+#[derive(Deserialize, JsonSchema, Default)]
+#[allow(dead_code)]
+pub struct DeleteProjectParams {
+    pub project_id: String,
+}
