@@ -3,7 +3,7 @@ use crate::database::projects::Project;
 use crate::database::{items, projects};
 use crate::parameters::item_params::{ListItemsParameters, CreateItemParams, CompleteItemParams, DeleteItemParams, UpdateItemParams};
 use crate::parameters::project_params::{CreateProjectParams, UpdateProjectParams, DeleteProjectParams};
-use crate::types::types::{ItemList, ProjectList};
+use crate::types::r#type::{ItemList, ProjectList};
 use rmcp::handler::server::wrapper::{Json, Parameters};
 use rmcp::{ErrorData, ServerHandler, tool, tool_handler, tool_router};
 
