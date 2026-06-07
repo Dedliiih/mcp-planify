@@ -67,11 +67,22 @@ mcp-planify
 
 ## Available tools
 
+### Projects
+
 | Tool | Description | Parameters |
 |------|-------------|------------|
 | `list_projects` | List all projects | — |
+| `create_project` | Create a new project | `name`, `description` |
+| `update_project` | Update a project by ID | `project_id`, `name`, `description` |
+| `delete_project` | Soft-delete a project and its tasks | `project_id` |
+
+### Tasks
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
 | `list_items` | List items with optional filters | `project_id`, `completed`, `priority` |
 | `create_item` | Create a new task | `content`, `project_id`, `description`, `priority`, `due`, `labels`, `parent_id` |
+| `update_item` | Update a task by ID | `item_id`, `content`, `description`, `priority`, `due`, `labels` |
 | `complete_item` | Mark a task as completed | `item_id` |
 | `delete_item` | Soft-delete a task | `item_id` |
 
