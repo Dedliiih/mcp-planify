@@ -1,7 +1,7 @@
-use serde::{Serialize};
-use schemars::JsonSchema;
-use crate::database::projects::Project;
 use crate::database::items::Item;
+use crate::database::projects::Project;
+use schemars::JsonSchema;
+use serde::Serialize;
 
 #[derive(Serialize, JsonSchema)]
 pub struct ProjectList {

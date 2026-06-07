@@ -1,5 +1,5 @@
 use schemars::JsonSchema;
-use serde::{Deserialize};
+use serde::Deserialize;
 
 #[derive(Deserialize, JsonSchema)]
 #[allow(dead_code)]
@@ -25,7 +25,6 @@ pub struct CreateItemParams {
 #[allow(dead_code)]
 pub struct CompleteItemParams {
     pub item_id: String,
-
 }
 
 #[derive(Deserialize, JsonSchema, Default)]
@@ -42,5 +41,5 @@ pub struct UpdateItemParams {
     pub description: Option<String>,
     pub priority: Option<i64>,
     pub due: Option<String>,
-    pub labels: Option<String>
+    pub labels: Option<String>,
 }

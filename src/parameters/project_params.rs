@@ -5,7 +5,7 @@ use serde::Deserialize;
 #[allow(dead_code)]
 pub struct CreateProjectParams {
     pub name: String,
-    pub description: Option<String>
+    pub description: Option<String>,
 }
 
 #[derive(Deserialize, JsonSchema, Default)]

@@ -1,8 +1,12 @@
 use crate::database::connection::DbPool;
 use crate::database::projects::Project;
 use crate::database::{items, projects};
-use crate::parameters::item_params::{ListItemsParameters, CreateItemParams, CompleteItemParams, DeleteItemParams, UpdateItemParams};
-use crate::parameters::project_params::{CreateProjectParams, UpdateProjectParams, DeleteProjectParams};
+use crate::parameters::item_params::{
+    CompleteItemParams, CreateItemParams, DeleteItemParams, ListItemsParameters, UpdateItemParams,
+};
+use crate::parameters::project_params::{
+    CreateProjectParams, DeleteProjectParams, UpdateProjectParams,
+};
 use crate::types::r#type::{ItemList, ProjectList};
 use rmcp::handler::server::wrapper::{Json, Parameters};
 use rmcp::{ErrorData, ServerHandler, tool, tool_handler, tool_router};
@@ -24,12 +28,12 @@ impl PlanifyServer {
     #[tool(name = "create_project", description = "Create a new project")]
     fn create_project(
         &self,
-        params: Parameters<CreateProjectParams>
+        params: Parameters<CreateProjectParams>,
     ) -> Result<Json<Project>, ErrorData> {
         let request = params.0;
         projects::create_project(&self.pool, &request.name, &request.description)
-        .map(Json)
-        .map_err(|e| ErrorData::internal_error(e.to_string(), None))
+            .map(Json)
+            .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
 
     #[tool(name = "update_project", description = "Update a project by ID")]
@@ -48,7 +52,10 @@ impl PlanifyServer {
         .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
 
-    #[tool(name = "delete_project", description = "Soft-delete a project and its items by ID")]
+    #[tool(
+        name = "delete_project",
+        description = "Soft-delete a project and its items by ID"
+    )]
     fn delete_project(
         &self,
         Parameters(DeleteProjectParams { project_id }): Parameters<DeleteProjectParams>,
@@ -57,7 +64,10 @@ impl PlanifyServer {
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }
 
-    #[tool(name = "list_items", description = "List items, optionally filtered by project, completion status or priority")]
+    #[tool(
+        name = "list_items",
+        description = "List items, optionally filtered by project, completion status or priority"
+    )]
     fn list_items(
         &self,
         params: Parameters<ListItemsParameters>,
@@ -97,7 +107,7 @@ impl PlanifyServer {
     #[tool(name = "complete_item", description = "Mark a task as completed")]
     fn complete_item(
         &self,
-        params: Parameters<CompleteItemParams>
+        params: Parameters<CompleteItemParams>,
     ) -> Result<Json<items::Item>, ErrorData> {
         let request = params.0;
 
@@ -107,10 +117,7 @@ impl PlanifyServer {
     }
 
     #[tool(name = "delete_item", description = "Soft-delete a task by ID")]
-    fn delete_item(
-        &self,
-        params: Parameters<DeleteItemParams>,
-    ) -> Result<(), ErrorData> {
+    fn delete_item(&self, params: Parameters<DeleteItemParams>) -> Result<(), ErrorData> {
         let request = params.0;
 
         items::delete_item(&self.pool, &request.item_id)
@@ -125,13 +132,14 @@ impl PlanifyServer {
         let request = params.0;
 
         items::update_item(
-            &self.pool, 
-            &request.item_id, 
-            request.content.as_deref(), 
-            &request.description, 
-            request.priority, 
-            request.due.as_deref(), 
-            request.labels.as_deref())
+            &self.pool,
+            &request.item_id,
+            request.content.as_deref(),
+            &request.description,
+            request.priority,
+            request.due.as_deref(),
+            request.labels.as_deref(),
+        )
         .map(Json)
         .map_err(|e| ErrorData::internal_error(e.to_string(), None))
     }

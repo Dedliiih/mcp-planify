@@ -92,7 +92,7 @@ pub fn update_item(
     description: &Option<String>,
     priority: Option<i64>,
     due: Option<&str>,
-    labels: Option<&str>
+    labels: Option<&str>,
 ) -> Result<Item, PlanifyError> {
     let updated_at = chrono::Local::now()
         .format("%Y-%m-%dT%H:%M:%S%z")
@@ -130,7 +130,6 @@ pub fn update_item(
             },
         )?)
     })
-
 }
 
 #[allow(dead_code)]

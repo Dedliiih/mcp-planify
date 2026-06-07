@@ -14,7 +14,8 @@ pub struct Project {
 
 pub fn list_projects(pool: &DbPool) -> Result<Vec<Project>, PlanifyError> {
     pool.exec(|conn| {
-        let mut stmt = conn.prepare("SELECT id, name, description, color FROM Projects WHERE is_deleted = 0")?;
+        let mut stmt =
+            conn.prepare("SELECT id, name, description, color FROM Projects WHERE is_deleted = 0")?;
 
         let projects = stmt
             .query_map((), |row| {
@@ -31,7 +32,7 @@ pub fn list_projects(pool: &DbPool) -> Result<Vec<Project>, PlanifyError> {
 }
 
 pub fn create_project(
-    pool: &DbPool, 
+    pool: &DbPool,
     name: &str,
     description: &Option<String>,
 ) -> Result<Project, PlanifyError> {
@@ -52,14 +53,11 @@ pub fn create_project(
             1, COALESCE(?3, ''), '', 0,
             '', 'local', '', 'manual'
         )
-        "
+        ",
     );
 
     pool.exec(|conn| {
-        conn.execute(
-            &stmt, 
-            params![id, name, description]
-        )?;
+        conn.execute(&stmt, params![id, name, description])?;
 
         Ok(conn.query_row(
             "SELECT id, name, description FROM Projects WHERE id = ?1",
@@ -68,9 +66,9 @@ pub fn create_project(
                 Ok(Project {
                     id: row.get(0)?,
                     name: row.get(1)?,
-                    description: row.get(2)?
+                    description: row.get(2)?,
                 })
-            }
+            },
         )?)
     })
 }
@@ -85,7 +83,7 @@ pub fn update_project(
         "UPDATE Projects
          SET name = COALESCE(?1, name),
              description = COALESCE(?2, description)
-         WHERE id = ?3" 
+         WHERE id = ?3",
     );
 
     pool.exec(|conn| {
@@ -94,11 +92,13 @@ pub fn update_project(
         Ok(conn.query_row(
             "SELECT id, name, description FROM Projects WHERE id = ?1",
             params![project_id],
-            |row| Ok(Project {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                description: row.get(2)?,
-            }),
+            |row| {
+                Ok(Project {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    description: row.get(2)?,
+                })
+            },
         )?)
     })
 }
@@ -116,4 +116,3 @@ pub fn delete_project(pool: &DbPool, project_id: &str) -> Result<(), PlanifyErro
         Ok(())
     })
 }
-

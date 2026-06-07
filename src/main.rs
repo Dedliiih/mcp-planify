@@ -5,9 +5,9 @@ use crate::server::PlanifyServer;
 use rmcp::ServiceExt;
 use rmcp::transport::io;
 
-mod parameters;
 mod database;
 mod error;
+mod parameters;
 mod server;
 mod types;
 
